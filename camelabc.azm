@@ -1,0 +1,318 @@
+;    XCUR 
+	head XCUR,4,XCUR,docon
+        DW 65012
+
+;    YCUR  
+	head YCUR,4,YCUR,docon
+        DW 65011
+;    dot
+;    SETDOT ( -- ) sets DOT to set dot
+         head SETDOT,6,SETDOT,docode
+        ld HL,0b600h
+        ld (SETCLR),HL ; load code NOP+OR at SETCLR
+        next
+;    CLRDOT ( -- ) sets DOT to clr dot
+         head CLRDOT,6,CLRDOT,docode
+        ld HL,0a62fh
+        ld (SETCLR),HL ; load code NOP+OR at SETCLR
+        next
+
+;    DODOT   ( col row -- ) change dot according to last SETDOT/CLRDOT
+	head DODOT,5,DODOT,docode
+	pop     hl  ; col in hl (l) row in bc (c)
+        ex      de,hl
+	push    hl
+        push    ix
+ 	push 	iy ; save important regs
+	ex	de,hl  ; col back in l
+        LD      A,C
+        CP      2
+        JR      C,NODOT  ;UTANF\R SK[RMEN
+            ;RAD I C-REG
+            ;KOLUMN I L-REG
+		LD      A,(022EEH)
+        CP      124
+        LD      A,C      ;KOLUMN I A-REG (ocksa)
+        JR      Z,OLD
+        CALL    022ECH   ;NYA CHECKSUMMOR
+        JR      SETIT
+OLD:    CALL    022EEH   ;GAMMAL CHECKSUMMA
+SETIT:  JR      C,NODOT
+SETCLR: NOP              ;<= SETDOT  CLRDOT= CPL
+        OR      (HL)     ;<= SETDOT  CLRDOT= AND (HL)
+        OR      32
+        LD      (HL),A
+
+
+NODOT:  pop iy
+	pop ix
+	pop de ; restore important regs
+	pop bc ; and finally, move TOS up in BC
+	next
+;; INBUF -- ABC80 INPUT BUFFER
+	head INBUF,5,INBUF,docon
+	dw 65088
+;; DEVROOT -- BASE OF UNIT LIST
+	head DEVROOT,7,DEVROOT,docon
+        DW 65034
+;; VARROOT -- BASE OF VARIABLE LIST - TO EMULATE BASIC VARIABLES 
+	head VARROOT,7,VARROOT,docon
+        DW 65046
+;; DOSBUF0 -- BASE OF DOSBUF AREA
+	head DOSBUF0,7,DOSBUF0,docon
+        DW 62720
+
+;; DRD -- read sector B = dosbuf *10h, DE = sector
+	head DRD,3,DRD,docon
+        DW 600fh
+
+;; DWR -- Write sector B = dosbuf *10h, DE = sector
+	head DWR,3,DWR,docon
+        DW 6012h
+;; DPREP -- Prepare file: DE form filename 8+3, BC=DOSBUF*10h:SELCODE
+	head DPREP,5,DPREP,docon
+        DW 6015h
+;; DOPEN -- Open file: DE form filename 8+3, BC=DOSBUF*10h:SELCODE
+	head DOPEN,5,DOPEN,docon
+        DW 6018h
+;; DLDABS -- LOAD ABS FILE: DE form filename 8+3, BC=DOSBUF*10h:SELCODE, ret HL:startaddr
+	head DLDABS,6,DLDABS,docon
+        DW 601bh
+;; DRUNABS -- RUN ABS FILE: DE form filename 8+3, BC=DOSBUF*10h:SELCODE
+	head DRUNABS,7,DRUNABS,docon
+        DW 601eh
+;; DCLOSE -- CLOSE file: BC=DOSBUF*10h:xx
+	head DCLOSE,6,DCLOSE,docon
+        DW 6021h
+;; DSEEK -- SEEK file: BC=DOSBUF*10h:xx, DE:secno
+	head DSEEK,5,DSEEK,docon
+        DW 602Ah
+;; DREAD -- READ file: BC=DOSBUF*10h:xx, DE:secno(?)
+	head DREAD,5,DREAD,docon
+        DW 602dh
+;; DWRITE -- WRITE file: BC=DOSBUF*10h:xx, DE:secno(?)
+	head DWRITE,6,DWRITE,docon
+        DW 6030h
+
+
+;; CTRLC -- CTRLC FLAG (-- CTRLC )
+	head CTRLC,5,CTRLC,docode
+        ld a,(65031)
+	and 128
+	push bc
+	ld b,0
+	ld c,a
+	LD A,0
+	LD (65031),A ; CLEAR FLAG ONCE IT HAS BEEN READ
+	next
+
+;; SYSCALL -- call a system routine (ROUTINE IXval DEval BCval -- )
+
+	head SYSCALL,7,SYSCALL,docode
+	jr syscmain
+;Hanterar fel vid filhantering
+FILCONTR PUSH HL
+         LD   HL,FELRUTIN
+         EX   (SP),HL
+         LD   (254*256+54),SP ;RUN-timestack
+         PUSH HL
+         LD   HL,FILC2
+         LD   (IY+30),L ;ONERRORGOTO
+         LD   (IY+31),H
+         LD   (IY+14),0 ;RUN-mode
+         LD   (IY+15),0 ;NOTRACE
+         LD   HL,FILC1
+         EX   (SP),HL
+         PUSH hl ; PUSH DE IN ORIGINAL, BUT WE STORE THE ROUTINE ADDRESS IN hl
+         RET
+
+FILC1    INC  SP
+         INC  SP
+         RET
+
+FILC2    DEFB 4,0,1,145 ;BASIC-return
+
+FELRUTIN LD   A,(IY+34) ;Errcode
+		 OUT 173,A 
+         AND  A
+         SCF
+         RET
+syscmain:
+	push de
+	push ix
+	push iy ; save away regs
+	ld ix,0
+	add ix,sp ; SP IN IX
+; stack now looks like this
+;	ix/sp	0   1   2   3   4   5   6      7      8      9      10    11    12  13  14	
+;		iyl iyh ixl ixh del deh devall devalh ixvall ixvalh routl routh
+; start populating the registers - bc already done as it is TOS!
+	ld d,(IX+7)
+	ld e,(IX+6)
+	ld h,(ix+9)
+	ld l,(ix+8) 
+	push hl ; ix val now on stack
+	LD HL,SYSCERR ; DEFAULT ERROR JMP ADDRESS
+	LD (253*256+51),HL  ; IS NOW SYSCE!
+	ld hl,254*256+22
+	push hl
+	pop iy ; IY is now what it usually is in BASIC
+	ld h,(ix+11) 
+	ld l,(ix+10) ; routine address in HL
+	pop ix ; and finally ix value is popped
+	OUT 170,A
+	call FILCONTR ; call the routine
+	jp SYSCRET
+SYSCERR:	out 172,A ; WE END UP HERE ON AN ERROR CONDITION
+	POP HL
+	POP HL ; CLEAR JUNK FROM STACK (2 WORDS)
+	LD   A,(IY+34) ;Errcode
+	LD  A,33
+         AND  A
+SYSCRET:	OUT 171,A
+	rla ; carry flag into a as well (and error is then 7 top bits)
+	ld c,a ; into c
+	ld b,0 ; BC is new TOS
+	pop iy
+	pop ix
+	pop de
+	pop hl ; junk - deval
+	pop hl ; junk - ixval
+	pop hl ; junk - routine addr
+	next
+	
+;; FSTRUCT     - "name" - FILE           per stack diagram
+    head FSTRUCT,7,FSTRUCT,docolon
+        DW CREATE,LIT,11+2+25,ALLOT,EXIT
+		
+;; .FNAME    FILE - FNAME (8+3) does nothing, file name is first in struct           per stack diagram
+    head DFNAME,6,.FNAME,docolon
+        DW EXIT
+
+;; .FDOSBUF    FILE - >DOSBUF*10h 
+    head DFDOSBUF,8,.FDOSBUF,docolon
+        DW LIT,12,PLUS,EXIT
+		
+;; .FSELCOD    FILE - >SELCODE 
+    head DFSELCOD,8,.FSELCOD,docolon
+        DW LIT,11,PLUS,EXIT
+;; .FIXMAP    FILE - >DOSBUF*10h .F
+    head DFIXMAP,7,.FIXMAP,docolon
+        DW LIT,13,PLUS,EXIT
+;; .FDBADDR   FILE -> DOSBUFADDR
+	head DFDBADDR,8,.FDBADDR,docolon
+		dw DFDOSBUF,CFETCH,LIT,10h,SLASH,LIT,100H,STAR,DOSBUF0,PLUS,EXIT
+;; DEFFILE  DEFAULT FILE FILEMAP
+	head DEFFILE,7,DEFFILE,docode
+		push bc
+		ld hl,dfdata
+		ld b,h
+		ld c,l
+		next
+dfdata:
+		db 'CAMABC  TXT',0FFh,10h
+		ds 25
+		
+;; FCMD    FILE CMD -  DO CMD IX FNAME DOSBUFSELCODE SYSCALL     
+    head FCMD,4,FCMD,docolon
+        DW OVER,DUP  ; FILE CMD FILE FILE --
+		DW TWOSWAP,SWOP    ; FILE FILE CMD FILE              
+		DW DFIXMAP,TWOSWAP ; CMD IXMAP FILE FILE
+		DW DFNAME,SWOP,DFSELCOD,FETCH ; CMD IXMAP FNAME FSELCOD
+		DW EXIT ;             
+;; FCMD2    FILE DE CMD -  DO CMD IX DE DOSBUFSELCODE SYSCALL     
+    head FCMD2,5,FCMD2,docolon
+        DW SWOP,ROT,DUP  ; CMD DE FILE FILE --
+		DW DFIXMAP,SWOP,DFSELCOD,FETCH    ; CMD DE FIXMAP FSELCOD
+		DW ROT,SWOP ; CMD FIXMAP DE FSELCOD
+		DW EXIT ;             
+	        
+;; FOPEN    FILE -- RES
+    head FOPEN,5,FOPEN,docolon
+        DW DOPEN,FCMD,SYSCALL,EXIT
+;; FPREP    FILE -- RES
+    head FPREP,5,FPREP,docolon
+        DW DPREP,FCMD,SYSCALL,EXIT
+;; FCLOSE    FILE -- RES
+    head FCLOSE,6,FCLOSE,docolon
+        DW DCLOSE,FCMD,SYSCALL,EXIT
+;; FLDABS    FILE -- RES  ; DOES NOT RETURN HL=START (YET)
+    head FLDABS,6,FLDABS,docolon
+        DW DLDABS,FCMD,SYSCALL,EXIT
+;; FRUNABS    FILE -- RES
+    head FRUNABS,7,FRUNABS,docolon
+        DW DRUNABS,FCMD,SYSCALL,EXIT
+		
+;; FREAD    FILE  DE -- RES
+    head FREAD,5,FREAD,docolon
+        DW DREAD,FCMD2,SYSCALL,EXIT
+;; FWRITE    FILE  DE -- RES
+    head FWRITE,6,FWRITE,docolon
+        DW DWRITE,FCMD2,SYSCALL,EXIT
+;; FSEEK    FILE  DE -- RES
+    head FSEEK,5,FSEEK,docolon
+        DW DSEEK,FCMD2,SYSCALL,EXIT
+;; FRD      FILE DE -- RES
+	head FRD,3,FRD,docolon
+		DW DRD,FCMD2,SYSCALL,EXIT
+;; FWR      FILE DE -- RES
+	head FWR,3,FWR,docolon
+		DW DWR,FCMD2,SYSCALL,EXIT
+EOFCHAR EQU 3 
+
+;; BUFPEK -- buffer pointer
+	head BUFPEK,6,BUFPEK,douser
+        DW 0
+
+;; DEFLOAD   
+    head DEFLOAD,7,DEFLOAD,docolon
+	    DW DEFFILE,FOPEN ; deffile fopen
+		; begin
+DEFLO0:
+		DW LIT,'%',EMIT,KEY,DROP
+		dw DEFFILE,LIT,0,FREAD ; deffile 0 fread
+		dw LIT,0,BUFPEK,STORE ; 0 bufpek !
+		dw LIT,253,LIT,0 ; 253 0 do
+		dw XDO ; do 
+
+DEFLOB:
+		dw II,DEFFILE,DFDBADDR,PLUS,LIT,2,PLUS,CFETCH  ;	i deffile .fdbaddr + 2 + c@
+		dw DUP,EMIT,KEY,DROP ; debug output
+		dw DUP,TIB,BUFPEK,PLUS,CSTORE ; dup tib bufpek + c!
+		
+		dw LIT,13,EQUAL ; 13 = 
+			;if
+		dw QBRANCH,DEFLO2
+DEFLO1:
+		;DW LIT,998,DOT,BUFPEK,FETCH,DOT,KEY,DROP
+		DW LIT,'#',EMITINBU
+		;dw TIB,INTERPRET ; tib interpret
+		dw LIT,0,BUFPEK,STORE ;	0 bufpek !
+		;	endif
+		
+DEFLO2:
+		; loop
+		;DW LIT,999,DOT,II,DOT,BUFPEK,FETCH,DOT,KEY,DROP
+	DW XLOOP,DEFLOB
+		;dw EOFCHAR,EQUAL
+		DW KEY,LIT,32,EQUAL,QBRANCH,DEFLO0 ; eofchar = until
+ 
+	DW EXIT
+
+;; tst - TEST VARIOUS ASPECTS OF FORTH / ASSEMBLY
+	head TST,3,TST,docolon
+		DW LIT,253,LIT,0,XDO
+TST0:   DW II,DOT,XLOOP,TST0,EXIT
+
+;C TYPE    c-addr +n --     type line to term'l
+;   ?DUP IF
+;     OVER + SWAP DO I C@ EMIT LOOP
+;   ELSE DROP THEN ;
+    head TYPE2,5,TYPE2,docolon
+        DW QDUP,QBRANCH,TYP24
+        DW OVER,PLUS,SWOP,XDO
+TYP23:   DW II,CFETCH,EMIT,XLOOP,TYP23
+        DW BRANCH,TYP25
+TYP24:   DW DROP
+TYP25:   DW EXIT
+
