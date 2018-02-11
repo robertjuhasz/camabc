@@ -14,4 +14,6 @@ This is a rather minimal port of the CP/M CamelFORTH to the ABC80
 The whole thing was assembled using the Z80MR.COM (search this to obtain it) 
 macro assembler under CP/M for extra vintage feeling. Just like the old 
 CamelFORTH...
-	
+
+The file cam.bat shows the build process under DOS/WIN using zxc CP/M emulation 
+and creating a disk image for ABCWIN	
