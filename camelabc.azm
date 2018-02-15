@@ -265,54 +265,54 @@ EOFCHAR EQU 3
         DW 0
 
 ;; DEFLOAD   
-    head DEFLOAD,7,DEFLOAD,docolon
-	    DW DEFFILE,FOPEN ; deffile fopen
-		; begin
-DEFLO0:
-		DW LIT,'%',EMIT,KEY,DROP
-		dw DEFFILE,LIT,0,FREAD ; deffile 0 fread
-		dw LIT,0,BUFPEK,STORE ; 0 bufpek !
-		dw LIT,253,LIT,0 ; 253 0 do
-		dw XDO ; do 
-
-DEFLOB:
-		dw II,DEFFILE,DFDBADDR,PLUS,LIT,2,PLUS,CFETCH  ;	i deffile .fdbaddr + 2 + c@
-		dw DUP,EMIT,KEY,DROP ; debug output
-		dw DUP,TIB,BUFPEK,PLUS,CSTORE ; dup tib bufpek + c!
-		
-		dw LIT,13,EQUAL ; 13 = 
-			;if
-		dw QBRANCH,DEFLO2
-DEFLO1:
-		;DW LIT,998,DOT,BUFPEK,FETCH,DOT,KEY,DROP
-		DW LIT,'#',EMITINBU
-		;dw TIB,INTERPRET ; tib interpret
-		dw LIT,0,BUFPEK,STORE ;	0 bufpek !
-		;	endif
-		
-DEFLO2:
-		; loop
-		;DW LIT,999,DOT,II,DOT,BUFPEK,FETCH,DOT,KEY,DROP
-	DW XLOOP,DEFLOB
-		;dw EOFCHAR,EQUAL
-		DW KEY,LIT,32,EQUAL,QBRANCH,DEFLO0 ; eofchar = until
- 
-	DW EXIT
-
+;    head DEFLOAD,7,DEFLOAD,docolon
+;	    DW DEFFILE,FOPEN ; deffile fopen
+;		; begin
+;DEFLO0:
+;		DW LIT,'%',EMIT,KEY,DROP
+;		dw DEFFILE,LIT,0,FREAD ; deffile 0 fread
+;		dw LIT,0,BUFPEK,STORE ; 0 bufpek !
+;		dw LIT,253,LIT,0 ; 253 0 do
+;		dw XDO ; do 
+;
+;DEFLOB:
+;		dw II,DEFFILE,DFDBADDR,PLUS,LIT,2,PLUS,CFETCH  ;	i deffile .fdbaddr + 2 + c@
+;		dw DUP,EMIT,KEY,DROP ; debug output
+;		dw DUP,TIB,BUFPEK,PLUS,CSTORE ; dup tib bufpek + c!
+;		
+;		dw LIT,13,EQUAL ; 13 = 
+;			;if
+;		dw QBRANCH,DEFLO2
+;DEFLO1:
+;		;DW LIT,998,DOT,BUFPEK,FETCH,DOT,KEY,DROP
+;		DW LIT,'#',EMITINBU
+;		;dw TIB,INTERPRET ; tib interpret
+;		dw LIT,0,BUFPEK,STORE ;	0 bufpek !
+;		;	endif
+;		
+;DEFLO2:
+;		; loop
+;		;DW LIT,999,DOT,II,DOT,BUFPEK,FETCH,DOT,KEY,DROP
+;	DW XLOOP,DEFLOB
+;		;dw EOFCHAR,EQUAL
+;		DW KEY,LIT,32,EQUAL,QBRANCH,DEFLO0 ; eofchar = until
+;
+;	DW EXIT
+;
 ;; tst - TEST VARIOUS ASPECTS OF FORTH / ASSEMBLY
-	head TST,3,TST,docolon
-		DW LIT,253,LIT,0,XDO
-TST0:   DW II,DOT,XLOOP,TST0,EXIT
-
+;	head TST,3,TST,docolon
+;		DW LIT,253,LIT,0,XDO
+;TST0:   DW II,DOT,XLOOP,TST0,EXIT
+;
 ;C TYPE    c-addr +n --     type line to term'l
 ;   ?DUP IF
 ;     OVER + SWAP DO I C@ EMIT LOOP
 ;   ELSE DROP THEN ;
-    head TYPE2,5,TYPE2,docolon
-        DW QDUP,QBRANCH,TYP24
-        DW OVER,PLUS,SWOP,XDO
-TYP23:   DW II,CFETCH,EMIT,XLOOP,TYP23
-        DW BRANCH,TYP25
-TYP24:   DW DROP
-TYP25:   DW EXIT
+;    head TYPE2,5,TYPE2,docolon
+;        DW QDUP,QBRANCH,TYP24
+;        DW OVER,PLUS,SWOP,XDO
+;TYP23:   DW II,CFETCH,EMIT,XLOOP,TYP23
+;        DW BRANCH,TYP25
+;TYP24:   DW DROP
+;TYP25:   DW EXIT
 
