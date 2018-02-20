@@ -1,3 +1,18 @@
+;    P! ( b port# -- ) set Z80 io port to b
+        head PSTORE,2,P!,docode
+        pop hl
+        ld a,l ; lower 8 bits of b in a
+        out (c),a ; port# already in bc since TOS in bc. Note that this enables 16-bit addresses since
+                  ; the value of b will also be used and output on A8-A15 and c on A0-A7
+        pop bc ; finally put the new TOS in bc 
+        next
+;    P@ ( port# -- b ) gets Z80 port value 
+        head PGET,2,P@,docode
+        in (c),a ; also 16-bit!
+        ld b,0
+        ld c,a ; and put in TOS!
+        next
+	
 ;    XCUR 
 	head XCUR,4,XCUR,docon
         DW 65012
