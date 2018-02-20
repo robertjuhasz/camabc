@@ -8,7 +8,7 @@
         next
 ;    P@ ( port# -- b ) gets Z80 port value 
         head PGET,2,P@,docode
-        in (c),a ; also 16-bit!
+        in a,(c) ; also 16-bit!
         ld b,0
         ld c,a ; and put in TOS!
         next
